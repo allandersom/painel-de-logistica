@@ -14,10 +14,16 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
-        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
-        .card-gradient { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #f1f5f9; 
+            margin: 0;
+            padding: 0;
+        }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .card-gradient { background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); }
+        .sidebar-glow { box-shadow: 0 0 20px rgba(79, 70, 229, 0.1); }
+        .row-hover:hover { background-color: rgba(241, 245, 249, 0.5); }
     </script>
 </head>
 <body>
@@ -61,7 +67,7 @@
                     { date: '23/01/2026', started: 9, incidents: [{ plate: 'GHA0I73', driver: 'ELCIDES' }] },
                     { date: '27/01/2026', started: 7, incidents: [{ plate: 'KLQ4482', driver: 'JACKSON' }] },
                     { date: '29/01/2026', started: 11, incidents: [{ plate: 'OHE9D01', driver: 'JOELINTON' }] },
-                ].concat(Array(20).fill({started: 10, incidents: []})) // Mocking other days for chart
+                ]
             },
             Fevereiro: {
                 days: 28,
@@ -75,7 +81,7 @@
                     { date: '24/02/2026', started: 8, incidents: [{ plate: 'BWU5G46', driver: 'ELMAR' }] },
                     { date: '26/02/2026', started: 11, incidents: [{ plate: 'GIR7B54', driver: 'JONES' }] },
                     { date: '27/02/2026', started: 12, incidents: [{ plate: 'GIR7B54', driver: 'JONES' }] },
-                ].concat(Array(19).fill({started: 9, incidents: []}))
+                ]
             },
             Março: {
                 days: 31,
@@ -83,8 +89,11 @@
                     { date: '01/03/2026', started: 6, incidents: [] },
                     { date: '02/03/2026', started: 9, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }, { plate: 'KJC1401', driver: 'ROBERTO CARLOS' }] },
                     { date: '03/03/2026', started: 10, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }] },
+                    { date: '04/03/2026', started: 10, incidents: [] },
                     { date: '05/03/2026', started: 10, incidents: [{ plate: 'BWU5G46', driver: 'EMERSON' }] },
                     { date: '06/03/2026', started: 10, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }, { plate: 'CSQ8E46', driver: 'MARCELO' }] },
+                    { date: '07/03/2026', started: 7, incidents: [] },
+                    { date: '08/03/2026', started: 6, incidents: [] },
                     { date: '09/03/2026', started: 8, incidents: [
                         { plate: 'CSQ8E46', driver: 'MARCELO' }, 
                         { plate: 'PEY9J45', driver: 'EMERSON' }, 
@@ -99,20 +108,31 @@
             const [activeMonth, setActiveMonth] = useState('Março');
             const months = Object.keys(DATA_2026);
 
+            // Reforço na inicialização dos ícones
             useEffect(() => {
-                lucide.createIcons();
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
             }, [activeMonth]);
 
             const stats = useMemo(() => {
-                const monthData = DATA_2026[activeMonth];
-                const events = monthData.events.filter(e => e.date); // Filter mock items for real list
-                let totalStarted = monthData.events.reduce((acc, curr) => acc + curr.started, 0);
-                let totalBreaks = 0;
+                const monthConfig = DATA_2026[activeMonth];
                 
+                // Preencher dias vazios para o gráfico não quebrar
+                const allDays = Array.from({ length: monthConfig.days }, (_, i) => {
+                    const dayNum = i + 1;
+                    const dateStr = `${dayNum.toString().padStart(2, '0')}/${activeMonth === 'Janeiro' ? '01' : activeMonth === 'Fevereiro' ? '02' : '03'}/2026`;
+                    const existing = monthConfig.events.find(e => e.date === dateStr);
+                    return existing || { date: dateStr, started: 8, incidents: [] };
+                });
+
+                let totalStarted = 0;
+                let totalBreaks = 0;
                 const driverMap = {};
                 const plateMap = {};
 
-                monthData.events.forEach(day => {
+                allDays.forEach(day => {
+                    totalStarted += day.started;
                     day.incidents.forEach(inc => {
                         totalBreaks++;
                         driverMap[inc.driver] = (driverMap[inc.driver] || 0) + 1;
@@ -125,7 +145,7 @@
                 
                 const fleetHealth = Object.entries(DOWNTIME_DATA).map(([plate, downtime]) => {
                     const daysIdle = monthKey ? downtime[monthKey] : 0;
-                    const totalDays = monthData.days;
+                    const totalDays = monthConfig.days;
                     const utilization = (((totalDays - daysIdle) / totalDays) * 100).toFixed(0);
                     return { plate, daysIdle, utilization: parseInt(utilization) };
                 }).sort((a, b) => a.utilization - b.utilization);
@@ -136,170 +156,191 @@
                     uptime, 
                     driverRanking: Object.entries(driverMap).sort((a,b) => b[1] - a[1]),
                     plateRanking: Object.entries(plateMap).sort((a,b) => b[1] - a[1]),
-                    events, 
+                    allDays, 
                     fleetHealth 
                 };
             }, [activeMonth]);
 
             return (
-                <div className="min-h-screen pb-12">
-                    {/* Header Principal */}
-                    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 glass">
-                        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 card-gradient rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                <div className="min-h-screen">
+                    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 glass shadow-sm">
+                        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 card-gradient rounded-2xl flex items-center justify-center text-white shadow-xl">
                                     <i data-lucide="truck"></i>
                                 </div>
                                 <div>
-                                    <h1 className="text-xl font-extrabold text-slate-900 tracking-tight uppercase">SGC Logística</h1>
-                                    <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Gestão de Performance 2026</p>
+                                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter">SGC LOGÍSTICA</h1>
+                                    <p className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest">Controle Operacional • 2026</p>
                                 </div>
                             </div>
 
-                            <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                            <nav className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
                                 {months.map(m => (
                                     <button 
                                         key={m} 
                                         onClick={() => setActiveMonth(m)} 
-                                        className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${activeMonth === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                        className={`px-8 py-2.5 rounded-xl text-xs font-black transition-all ${activeMonth === m ? 'bg-white text-indigo-600 shadow-lg scale-105' : 'text-slate-500 hover:text-slate-800'}`}
                                     >
-                                        {m}
+                                        {m.toUpperCase()}
                                     </button>
                                 ))}
-                            </div>
+                            </nav>
                         </div>
                     </header>
 
-                    <main className="max-w-7xl mx-auto px-6 mt-8">
-                        {/* Cards de Métricas Rápidas */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <main className="max-w-7xl mx-auto px-6 py-10">
+                        {/* KPIs */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                             <KPI icon="zap" label="Viagens Totais" value={stats.totalStarted} color="text-blue-600" bg="bg-blue-50" />
-                            <KPI icon="wrench" label="Quebras Mecânicas" value={stats.totalBreaks} color="text-rose-600" bg="bg-rose-50" />
-                            <KPI icon="activity" label="Uptime da Frota" value={stats.uptime + "%"} color="text-emerald-600" bg="bg-emerald-50" />
-                            <KPI icon="shield-check" label="Nível de Utilização" value={activeMonth === 'Março' ? '--' : `${(stats.fleetHealth.reduce((a,b)=>a+b.utilization,0)/stats.fleetHealth.length).toFixed(1)}%`} color="text-indigo-600" bg="bg-indigo-50" />
+                            <KPI icon="wrench" label="Quebras Totais" value={stats.totalBreaks} color="text-rose-600" bg="bg-rose-50" />
+                            <KPI icon="activity" label="Eficiência Mês" value={stats.uptime + "%"} color="text-emerald-600" bg="bg-emerald-50" />
+                            <KPI icon="shield-check" label="Saúde da Frota" value={activeMonth === 'Março' ? '--' : `${(stats.fleetHealth.reduce((a,b)=>a+b.utilization,0)/stats.fleetHealth.length).toFixed(1)}%`} color="text-indigo-600" bg="bg-indigo-50" />
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                             
-                            {/* Coluna de Diagnóstico de Quebras */}
-                            <div className="lg:col-span-4 space-y-6">
-                                <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200">
-                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <i data-lucide="user-x" className="w-4"></i> Ranking de Quebras
+                            {/* Lateral: Rankings */}
+                            <div className="lg:col-span-4 space-y-8">
+                                <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200 sidebar-glow">
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-3">
+                                        <i data-lucide="award" className="w-4 text-indigo-500"></i> Painel de Ocorrências
                                     </h3>
                                     
-                                    <div className="space-y-6">
-                                        <section>
-                                            <p className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-tighter">Por Motorista</p>
-                                            <div className="space-y-2">
-                                                {stats.driverRanking.map(([name, val]) => (
-                                                    <div key={name} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                                                        <span className="text-xs font-bold text-slate-700 uppercase">{name}</span>
-                                                        <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${val > 1 ? 'bg-rose-100 text-rose-600' : 'bg-slate-200 text-slate-600'}`}>
-                                                            {val} {val === 1 ? 'QUEBRA' : 'QUEBRAS'}
+                                    <div className="space-y-8">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                                                <i data-lucide="users" className="w-3"></i> Top Motoristas (Quebras)
+                                            </p>
+                                            <div className="space-y-3">
+                                                {stats.driverRanking.length > 0 ? stats.driverRanking.map(([name, val]) => (
+                                                    <div key={name} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-indigo-200 transition-all cursor-default">
+                                                        <span className="text-xs font-bold text-slate-700 uppercase tracking-tight">{name}</span>
+                                                        <span className={`text-[10px] font-black px-3 py-1 rounded-lg ${val > 1 ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' : 'bg-slate-200 text-slate-600'}`}>
+                                                            {val} {val === 1 ? 'X' : 'X'}
                                                         </span>
                                                     </div>
-                                                ))}
+                                                )) : <p className="text-[11px] text-slate-400 italic">Sem quebras registradas.</p>}
                                             </div>
-                                        </section>
+                                        </div>
 
-                                        <section>
-                                            <p className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-tighter">Por Placa do Veículo</p>
-                                            <div className="space-y-2">
-                                                {stats.plateRanking.map(([plate, val]) => (
-                                                    <div key={plate} className="flex items-center justify-between p-3 bg-slate-900 rounded-2xl text-white">
-                                                        <span className="text-xs font-mono font-bold">{plate}</span>
-                                                        <span className="text-[10px] font-black text-rose-400">{val}x</span>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                                                <i data-lucide="tool" className="w-3"></i> Veículos Reincidentes
+                                            </p>
+                                            <div className="space-y-3">
+                                                {stats.plateRanking.length > 0 ? stats.plateRanking.map(([plate, val]) => (
+                                                    <div key={plate} className="flex items-center justify-between p-4 bg-slate-900 rounded-2xl text-white shadow-xl">
+                                                        <span className="text-xs font-mono font-black tracking-widest">{plate}</span>
+                                                        <span className="text-[10px] font-black text-rose-400 px-2 border-l border-slate-700">{val}x Falhas</span>
                                                     </div>
-                                                ))}
+                                                )) : <p className="text-[11px] text-slate-400 italic">Nenhum veículo crítico.</p>}
                                             </div>
-                                        </section>
+                                        </div>
                                     </div>
-                                </div>
+                                </section>
 
-                                {/* Sessão de Inatividade */}
                                 {activeMonth !== 'Março' && (
-                                    <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200">
-                                        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                            <i data-lucide="clock" className="w-4"></i> Inatividade (Saúde)
+                                    <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-3">
+                                            <i data-lucide="battery-charging" className="w-4 text-emerald-500"></i> Aproveitamento Mês
                                         </h3>
-                                        <div className="space-y-4">
-                                            {stats.fleetHealth.slice(0, 5).map(truck => (
+                                        <div className="space-y-5">
+                                            {stats.fleetHealth.slice(0, 6).map(truck => (
                                                 <div key={truck.plate}>
-                                                    <div className="flex justify-between text-[10px] font-bold mb-1 uppercase">
+                                                    <div className="flex justify-between text-[10px] font-bold mb-2 uppercase text-slate-500">
                                                         <span>{truck.plate}</span>
-                                                        <span className={truck.utilization < 50 ? 'text-rose-500' : 'text-slate-400'}>{truck.utilization}%</span>
+                                                        <span className={truck.utilization < 50 ? 'text-rose-500' : 'text-emerald-600'}>{truck.utilization}%</span>
                                                     </div>
-                                                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div className={`h-full rounded-full transition-all duration-1000 ${truck.utilization < 40 ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{width: `${truck.utilization}%`}}></div>
+                                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                                        <div className={`h-full rounded-full transition-all duration-1000 ${truck.utilization < 40 ? 'bg-rose-500' : (truck.utilization < 75 ? 'bg-amber-400' : 'bg-emerald-500')}`} style={{width: `${truck.utilization}%`}}></div>
                                                     </div>
                                                 </div>
                                             ))}
-                                            <p className="text-center text-[9px] text-slate-400 font-bold uppercase mt-2 italic">Apenas os 5 mais críticos exibidos acima</p>
                                         </div>
-                                    </div>
+                                    </section>
                                 )}
                             </div>
 
-                            {/* Detalhamento de Atividade Principal */}
-                            <div className="lg:col-span-8 space-y-8">
-                                <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
-                                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                                        <h3 className="font-bold text-slate-800">Diário de Ocorrências: {activeMonth}</h3>
-                                        <div className="text-[10px] font-black text-rose-500 bg-rose-50 px-3 py-1 rounded-full uppercase tracking-widest">
-                                            {stats.totalBreaks} Falhas
+                            {/* Conteúdo: Tabela e Gráfico */}
+                            <div className="lg:col-span-8 space-y-10">
+                                <div className="bg-white rounded-[3rem] shadow-sm border border-slate-200 overflow-hidden">
+                                    <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                        <div>
+                                            <h3 className="font-black text-slate-800 text-lg">Diário de Ocorrências</h3>
+                                            <p className="text-[11px] font-bold text-slate-400">Total de falhas registradas em {activeMonth}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-rose-500 text-white px-5 py-2 rounded-2xl shadow-lg shadow-rose-200">
+                                            <i data-lucide="alert-triangle" className="w-4"></i>
+                                            <span className="text-xs font-black">{stats.totalBreaks} ALERTAS</span>
                                         </div>
                                     </div>
-                                    <div className="overflow-x-auto">
+                                    <div className="overflow-x-auto scrollbar-hide">
                                         <table className="w-full text-left">
                                             <thead>
                                                 <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                    <th className="px-8 py-5">Data</th>
-                                                    <th className="px-8 py-5">Placa do Camião</th>
-                                                    <th className="px-8 py-5">Motorista</th>
-                                                    <th className="px-8 py-5 text-right">Encaminhamento</th>
+                                                    <th className="px-10 py-6">Data</th>
+                                                    <th className="px-10 py-6">Veículo</th>
+                                                    <th className="px-10 py-6">Motorista</th>
+                                                    <th className="px-10 py-6 text-right">Ação</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
-                                                {stats.events.flatMap(d => d.incidents.map((inc, i) => (
-                                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
-                                                        <td className="px-8 py-5 text-sm font-bold text-slate-600">{d.date}</td>
-                                                        <td className="px-8 py-5">
-                                                            <span className="bg-slate-100 text-slate-900 px-3 py-1.5 rounded-xl font-mono text-xs font-bold border border-slate-200">
+                                                {stats.allDays.flatMap(d => d.incidents.map((inc, i) => (
+                                                    <tr key={i} className="row-hover transition-colors">
+                                                        <td className="px-10 py-6 text-sm font-bold text-slate-600 italic">{d.date}</td>
+                                                        <td className="px-10 py-6">
+                                                            <span className="bg-slate-900 text-white px-4 py-2 rounded-xl font-mono text-xs font-black border border-slate-700 shadow-md">
                                                                 {inc.plate}
                                                             </span>
                                                         </td>
-                                                        <td className="px-8 py-5 text-sm font-bold text-slate-800 uppercase tracking-tight">{inc.driver}</td>
-                                                        <td className="px-8 py-5 text-right">
-                                                            <div className="inline-flex items-center gap-2 text-[10px] font-black text-rose-600 bg-rose-50 px-4 py-2 rounded-full uppercase">
-                                                                <i data-lucide="alert-circle" className="w-3"></i> Oficina
+                                                        <td className="px-10 py-6 text-sm font-black text-slate-800 uppercase tracking-tight underline decoration-indigo-200 decoration-2 underline-offset-4">{inc.driver}</td>
+                                                        <td className="px-10 py-6 text-right">
+                                                            <div className="inline-flex items-center gap-2 text-[10px] font-black text-rose-600 bg-rose-100 px-5 py-2.5 rounded-full uppercase border border-rose-200">
+                                                                <i data-lucide="wrench" className="w-3"></i> Oficina
                                                             </div>
                                                         </td>
                                                     </tr>
                                                 )))}
-                                                {stats.events.filter(e => e.incidents.length > 0).length === 0 && (
-                                                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 text-sm font-medium italic">Nenhuma quebra registrada neste mês.</td></tr>
+                                                {stats.totalBreaks === 0 && (
+                                                    <tr><td colSpan="4" className="p-20 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">✅ Operação Sem Incidentes</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
 
-                                {/* Gráfico Simples de Fluxo */}
-                                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-8">Fluxo de Operação Diário</h3>
-                                    <div className="flex items-end gap-1.5 h-32 w-full">
-                                        {DATA_2026[activeMonth].events.map((d, i) => (
+                                <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden">
+                                    <div className="flex items-center justify-between mb-10">
+                                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Fluxo Diário de Carga</h3>
+                                        <div className="flex gap-4">
+                                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500"></div> Operando
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></div> Quebra
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-end gap-2 h-48 w-full">
+                                        {stats.allDays.map((d, i) => (
                                             <div 
                                                 key={i} 
-                                                className={`flex-1 rounded-t-lg transition-all relative group cursor-pointer ${d.incidents.length > 0 ? 'bg-rose-400 shadow-[0_0_15px_rgba(251,113,133,0.3)]' : 'bg-slate-200 hover:bg-indigo-300'}`}
-                                                style={{ height: d.started === 0 ? '4px' : `${(d.started / 15) * 100}%` }}
+                                                className={`flex-1 rounded-t-xl transition-all relative group cursor-pointer ${d.incidents.length > 0 ? 'bg-rose-500 shadow-lg shadow-rose-200' : 'bg-indigo-100 hover:bg-indigo-300'}`}
+                                                style={{ height: d.started === 0 ? '6px' : `${(d.started / 15) * 100}%` }}
                                             >
-                                                <div className="opacity-0 group-hover:opacity-100 absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] p-2 rounded-xl z-50 whitespace-nowrap mb-2 shadow-2xl transition-opacity pointer-events-none">
-                                                    {d.date || 'Sem data'}: {d.started} veículos
+                                                <div className="opacity-0 group-hover:opacity-100 absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] p-3 rounded-2xl z-50 whitespace-nowrap mb-3 shadow-2xl transition-all transform scale-90 group-hover:scale-100 pointer-events-none font-bold border border-slate-700">
+                                                    <p className="text-indigo-400 mb-1">{d.date}</p>
+                                                    <p className="mb-0.5">{d.started} Camiões na rua</p>
+                                                    {d.incidents.length > 0 && <p className="text-rose-400">{d.incidents.length} Falhas mecânicas</p>}
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                    <div className="flex justify-between mt-6 text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2">
+                                        <span>Início do Mês</span>
+                                        <span>Performance Mensal</span>
+                                        <span>Fim do Ciclo</span>
                                     </div>
                                 </div>
                             </div>
@@ -311,13 +352,13 @@
 
         function KPI({ icon, label, value, color, bg }) {
             return (
-                <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-5 hover:translate-y-[-4px] transition-all duration-300">
-                    <div className={`p-4 rounded-2xl ${bg} ${color} shadow-sm`}>
-                        <i data-lucide={icon}></i>
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center gap-6 hover:translate-y-[-6px] transition-all duration-300 group">
+                    <div className={`p-5 rounded-2xl ${bg} ${color} shadow-sm group-hover:scale-110 transition-transform`}>
+                        <i data-lucide={icon} className="w-6 h-6"></i>
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-                        <p className={`text-2xl font-black ${color.replace('text-', 'text-slate-800')}`}>{value}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5">{label}</p>
+                        <p className={`text-3xl font-black ${color.replace('text-', 'text-slate-800')}`}>{value}</p>
                     </div>
                 </div>
             );
