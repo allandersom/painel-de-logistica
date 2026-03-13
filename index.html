@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Logística 2026</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React e Babel para rodar JSX no navegador -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        // Dados de Inatividade (Downtime)
+        const DOWNTIME_DATA = {
+            'BWU5G46': { Jan: 9, Feb: 5 },
+            'BYJ1E53': { Jan: 28, Feb: 14 },
+            'CSE0H31': { Jan: 21, Feb: 28 },
+            'CSQ8E46': { Jan: 11, Feb: 14 },
+            'OFQ8A53': { Jan: 31, Feb: 16 },
+            'DKI6I07': { Jan: 23, Feb: 10 },
+            'GFA9B22': { Jan: 9, Feb: 7 },
+            'GHA0I73': { Jan: 5, Feb: 8 },
+            'GIR7B54': { Jan: 27, Feb: 25 },
+            'PEY9J45': { Jan: 9, Feb: 11 },
+            'KHJ7C50': { Jan: 15, Feb: 18 },
+            'PFB1495': { Jan: 10, Feb: 26 },
+            'KJC1401': { Jan: 7, Feb: 12 },
+            'OYV5235': { Jan: 8, Feb: 17 },
+            'KRH3G40': { Jan: 21, Feb: 7 },
+            'NMJ-9A41': { Jan: 27, Feb: 12 },
+            'OHE9D01': { Jan: 30, Feb: 18 },
+            'KLQ4482': { Jan: 13, Feb: 22 },
+        };
+
+        const DATA_2026 = {
+            Janeiro: {
+                days: 31,
+                events: [
+                    { date: '01/01/2026', started: 5, incidents: [] },
+                    { date: '05/01/2026', started: 12, incidents: [{ plate: 'CSE0H31', driver: 'MESSIAS' }] },
+                    { date: '10/01/2026', started: 8, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
+                    { date: '16/01/2026', started: 11, incidents: [{ plate: 'CSE031', driver: 'MESSIAS' }] },
+                    { date: '17/01/2026', started: 8, incidents: [{ plate: 'PFB1495', driver: 'CLOVIS' }] },
+                    { date: '19/01/2026', started: 9, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
+                    { date: '21/01/2026', started: 11, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }] },
+                    { date: '22/01/2026', started: 10, incidents: [{ plate: 'KLQ4482', driver: 'JACKSON' }] },
+                    { date: '23/01/2026', started: 9, incidents: [{ plate: 'GHA0I73', driver: 'ELCIDES' }] },
+                    { date: '27/01/2026', started: 7, incidents: [{ plate: 'KLQ4482', driver: 'JACKSON' }] },
+                    { date: '29/01/2026', started: 11, incidents: [{ plate: 'OHE9D01', driver: 'JOELINTON' }] },
+                ]
+            },
+            Fevereiro: {
+                days: 28,
+                events: [
+                    { date: '04/02/2026', started: 12, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }, { plate: 'OHE9D01', driver: 'JOELITON' }] },
+                    { date: '06/02/2026', started: 12, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }] },
+                    { date: '12/02/2026', started: 13, incidents: [{ plate: 'DKI6I07', driver: 'PLATINIS' }] },
+                    { date: '13/02/2026', started: 12, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
+                    { date: '18/02/2026', started: 8, incidents: [{ plate: 'KLQ4482', driver: 'MESSIAS' }, { plate: 'OFQ8A53', driver: 'MATHEUS' }] },
+                    { date: '19/02/2026', started: 8, incidents: [{ plate: 'BWU5G46', driver: 'ELMAR' }] },
+                    { date: '24/02/2026', started: 8, incidents: [{ plate: 'BWU5G46', driver: 'ELMAR' }] },
+                    { date: '26/02/2026', started: 11, incidents: [{ plate: 'GIR7B54', driver: 'JONES' }] },
+                    { date: '27/02/2026', started: 12, incidents: [{ plate: 'GIR7B54', driver: 'JONES' }] },
+                ]
+            },
+            Março: {
+                days: 31,
+                events: [
+                    { date: '02/03/2026', started: 9, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }, { plate: 'KJC1401', driver: 'ROBERTO CARLOS' }] },
+                    { date: '03/03/2026', started: 10, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }] },
+                    { date: '05/03/2026', started: 10, incidents: [{ plate: 'BWU5G46', driver: 'EMERSON' }] },
+                    { date: '06/03/2026', started: 10, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }, { plate: 'CSQ8E46', driver: 'MARCELO' }] },
+                    { date: '09/03/2026', started: 8, incidents: [
+                        { plate: 'CSQ8E46', driver: 'MARCELO' }, 
+                        { plate: 'PEY9J45', driver: 'EMERSON' }, 
+                        { plate: 'OYV5235', driver: 'ERIC' }, 
+                        { plate: 'NMJ-9A41', driver: 'CLOVIS' }
+                    ]},
+                ]
+            }
+        };
+
+        function App() {
+            const [activeMonth, setActiveMonth] = useState('Março');
+            const months = Object.keys(DATA_2026);
+
+            useEffect(() => {
+                lucide.createIcons();
+            }, [activeMonth]);
+
+            const stats = useMemo(() => {
+                const monthData = DATA_2026[activeMonth];
+                const events = monthData.events;
+                let totalStarted = 0;
+                let totalBreaks = 0;
+                const driverIncidents = {};
+                const plateIncidents = {};
+
+                events.forEach(d => {
+                    totalStarted += d.started;
+                    totalBreaks += d.incidents.length;
+                    d.incidents.forEach(inc => {
+                        driverIncidents[inc.driver] = (driverIncidents[inc.driver] || 0) + 1;
+                        plateIncidents[inc.plate] = (plateIncidents[inc.plate] || 0) + 1;
+                    });
+                });
+
+                const uptime = totalStarted > 0 ? (((totalStarted - totalBreaks) / totalStarted) * 100).toFixed(1) : 0;
+                const monthKey = activeMonth === 'Janeiro' ? 'Jan' : (activeMonth === 'Fevereiro' ? 'Feb' : null);
+                const fleetHealth = Object.entries(DOWNTIME_DATA).map(([plate, downtime]) => {
+                    const daysIdle = monthKey ? downtime[monthKey] : 0;
+                    const totalDays = monthData.days;
+                    const utilization = (((totalDays - daysIdle) / totalDays) * 100).toFixed(0);
+                    return { plate, daysIdle, utilization: parseInt(utilization) };
+                }).sort((a, b) => a.utilization - b.utilization);
+
+                return { totalStarted, totalBreaks, uptime, driverIncidents, plateIncidents, events, fleetHealth };
+            }, [activeMonth]);
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
+                        <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
+                            <i data-lucide="bar-chart-3" class="text-indigo-600"></i> LOGÍSTICA 2026
+                        </h1>
+                        <div className="flex bg-white p-1 rounded-xl shadow-sm border">
+                            {months.map(m => (
+                                <button key={m} onClick={() => setActiveMonth(m)} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeMonth === m ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>
+                                    {m.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <Card title="Saídas" value={stats.totalStarted} color="bg-indigo-600" />
+                        <Card title="Quebras" value={stats.totalBreaks} color="bg-rose-500" />
+                        <Card title="Uptime" value={`${stats.uptime}%`} color="bg-emerald-500" />
+                        <Card title="Saúde" value={activeMonth === 'Março' ? '--' : `${(stats.fleetHealth.reduce((a,b)=>a+b.utilization,0)/stats.fleetHealth.length).toFixed(1)}%`} color="bg-blue-500" />
+                    </div>
+
+                    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border">
+                            <h3 className="font-bold mb-4">Aproveitamento da Frota</h3>
+                            {activeMonth === 'Março' ? <p className="text-slate-400 italic text-sm">Aguardando dados...</p> : 
+                            <div className="space-y-4">
+                                {stats.fleetHealth.map(t => (
+                                    <div key={t.plate}>
+                                        <div className="flex justify-between text-[10px] font-bold mb-1">
+                                            <span>{t.plate}</span>
+                                            <span className={t.utilization < 50 ? 'text-rose-500' : 'text-emerald-600'}>{t.utilization}%</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 h-1.5 rounded-full">
+                                            <div className={`h-full rounded-full ${t.utilization < 40 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{width: `${t.utilization}%`}}></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>}
+                        </div>
+
+                        <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border overflow-hidden">
+                            <div className="p-6 bg-slate-50 border-b font-bold">Relatório de Incidentes: {activeMonth}</div>
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase tracking-widest">
+                                    <tr><th className="p-4">Data</th><th className="p-4">Placa</th><th className="p-4">Motorista</th></tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {stats.events.flatMap(d => d.incidents.map((inc, i) => (
+                                        <tr key={i} className="hover:bg-rose-50/30">
+                                            <td className="p-4 font-bold text-slate-500">{d.date}</td>
+                                            <td className="p-4 font-mono font-bold text-slate-800">{inc.plate}</td>
+                                            <td className="p-4 uppercase font-bold text-slate-700">{inc.driver}</td>
+                                        </tr>
+                                    )))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function Card({title, value, color}) {
+            return (
+                <div className="bg-white p-6 rounded-3xl border shadow-sm flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl ${color}`}></div>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase">{title}</p>
+                        <p className="text-2xl font-black">{value}</p>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
