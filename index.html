@@ -3,369 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGC Logística - Gestão de Frota</title>
-    <!-- Tailwind CSS -->
+    <title>SGC Logística - Gestão de Performance</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & Babel -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #f1f5f9; 
-            margin: 0;
-            padding: 0;
-        }
-        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
         .card-gradient { background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); }
-        .sidebar-glow { box-shadow: 0 0 20px rgba(79, 70, 229, 0.1); }
-        .row-hover:hover { background-color: rgba(241, 245, 249, 0.5); }
-    </script>
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); }
+        .loading-screen { position: fixed; inset: 0; background: white; z-index: 100; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s; }
+    </style>
 </head>
-<body>
-    <div id="root"></div>
+<body class="text-slate-900">
 
-    <script type="text/babel">
-        const { useState, useMemo, useEffect } = React;
+    <!-- Tela de Carregamento -->
+    <div id="loader" class="loading-screen">
+        <div class="text-center">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
+            <p class="mt-4 font-bold text-slate-500 uppercase tracking-widest text-xs">SGC LOGÍSTICA</p>
+        </div>
+    </div>
 
+    <header class="bg-white border-b sticky top-0 z-40 glass shadow-sm">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 card-gradient rounded-2xl flex items-center justify-center text-white shadow-xl">
+                    <i data-lucide="truck"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tighter">SGC LOGÍSTICA</h1>
+                    <p class="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest">Controle de Frota • 2026</p>
+                </div>
+            </div>
+
+            <nav id="month-selector" class="flex bg-slate-100 p-1.5 rounded-2xl border shadow-inner">
+                <!-- Botões inseridos via JS -->
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-10">
+        <!-- KPIs -->
+        <div id="kpis" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Sidebar -->
+            <div class="lg:col-span-4 space-y-8">
+                <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <i data-lucide="award" class="w-4 text-indigo-500"></i> Alertas de Manutenção
+                    </h3>
+                    <div id="rankings" class="space-y-6"></div>
+                </div>
+
+                <div id="health-container" class="bg-white p-8 rounded-[2.5rem] shadow-sm border hidden">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <i data-lucide="battery-charging" class="w-4 text-emerald-500"></i> Saúde da Frota
+                    </h3>
+                    <div id="fleet-health" class="space-y-5"></div>
+                </div>
+            </div>
+
+            <!-- Tabela Principal -->
+            <div class="lg:col-span-8 space-y-10">
+                <div class="bg-white rounded-[3rem] shadow-sm border overflow-hidden">
+                    <div class="px-10 py-8 border-b bg-slate-50/50">
+                        <h3 id="table-title" class="font-black text-slate-800 text-lg">Diário de Ocorrências</h3>
+                        <p class="text-[11px] font-bold text-slate-400">Relatório detalhado de quebras mecânicas</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50">
+                                    <th class="px-10 py-5">Data</th>
+                                    <th class="px-10 py-5">Placa</th>
+                                    <th class="px-10 py-5">Motorista</th>
+                                    <th class="px-10 py-5 text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incidents-body" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-10 rounded-[3rem] border shadow-sm">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-8">Atividade de Saídas Diárias</h3>
+                    <div id="chart-container" class="flex items-end gap-2 h-40 w-full"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
         const DOWNTIME_DATA = {
-            'BWU5G46': { Jan: 9, Feb: 5 },
-            'BYJ1E53': { Jan: 28, Feb: 14 },
-            'CSE0H31': { Jan: 21, Feb: 28 },
-            'CSQ8E46': { Jan: 11, Feb: 14 },
-            'OFQ8A53': { Jan: 31, Feb: 16 },
-            'DKI6I07': { Jan: 23, Feb: 10 },
-            'GFA9B22': { Jan: 9, Feb: 7 },
-            'GHA0I73': { Jan: 5, Feb: 8 },
-            'GIR7B54': { Jan: 27, Feb: 25 },
-            'PEY9J45': { Jan: 9, Feb: 11 },
-            'KHJ7C50': { Jan: 15, Feb: 18 },
-            'PFB1495': { Jan: 10, Feb: 26 },
-            'KJC1401': { Jan: 7, Feb: 12 },
-            'OYV5235': { Jan: 8, Feb: 17 },
-            'KRH3G40': { Jan: 21, Feb: 7 },
-            'NMJ-9A41': { Jan: 27, Feb: 12 },
-            'OHE9D01': { Jan: 30, Feb: 18 },
-            'KLQ4482': { Jan: 13, Feb: 22 },
+            'BWU5G46': { Jan: 9, Feb: 5 }, 'BYJ1E53': { Jan: 28, Feb: 14 }, 'CSE0H31': { Jan: 21, Feb: 28 },
+            'CSQ8E46': { Jan: 11, Feb: 14 }, 'OFQ8A53': { Jan: 31, Feb: 16 }, 'DKI6I07': { Jan: 23, Feb: 10 },
+            'GFA9B22': { Jan: 9, Feb: 7 }, 'GHA0I73': { Jan: 5, Feb: 8 }, 'GIR7B54': { Jan: 27, Feb: 25 },
+            'PEY9J45': { Jan: 9, Feb: 11 }, 'KHJ7C50': { Jan: 15, Feb: 18 }, 'PFB1495': { Jan: 10, Feb: 26 },
+            'KJC1401': { Jan: 7, Feb: 12 }, 'OYV5235': { Jan: 8, Feb: 17 }, 'KRH3G40': { Jan: 21, Feb: 7 },
+            'NMJ-9A41': { Jan: 27, Feb: 12 }, 'OHE9D01': { Jan: 30, Feb: 18 }, 'KLQ4482': { Jan: 13, Feb: 22 },
         };
 
         const DATA_2026 = {
-            Janeiro: {
-                days: 31,
-                events: [
-                    { date: '05/01/2026', started: 12, incidents: [{ plate: 'CSE0H31', driver: 'MESSIAS' }] },
-                    { date: '10/01/2026', started: 8, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
-                    { date: '16/01/2026', started: 11, incidents: [{ plate: 'CSE031', driver: 'MESSIAS' }] },
-                    { date: '17/01/2026', started: 8, incidents: [{ plate: 'PFB1495', driver: 'CLOVIS' }] },
-                    { date: '19/01/2026', started: 9, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
-                    { date: '21/01/2026', started: 11, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }] },
-                    { date: '22/01/2026', started: 10, incidents: [{ plate: 'KLQ4482', driver: 'JACKSON' }] },
-                    { date: '23/01/2026', started: 9, incidents: [{ plate: 'GHA0I73', driver: 'ELCIDES' }] },
-                    { date: '27/01/2026', started: 7, incidents: [{ plate: 'KLQ4482', driver: 'JACKSON' }] },
-                    { date: '29/01/2026', started: 11, incidents: [{ plate: 'OHE9D01', driver: 'JOELINTON' }] },
-                ]
-            },
-            Fevereiro: {
-                days: 28,
-                events: [
-                    { date: '04/02/2026', started: 12, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }, { plate: 'OHE9D01', driver: 'JOELITON' }] },
-                    { date: '06/02/2026', started: 12, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }] },
-                    { date: '12/02/2026', started: 13, incidents: [{ plate: 'DKI6I07', driver: 'PLATINIS' }] },
-                    { date: '13/02/2026', started: 12, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
-                    { date: '18/02/2026', started: 8, incidents: [{ plate: 'KLQ4482', driver: 'MESSIAS' }, { plate: 'OFQ8A53', driver: 'MATHEUS' }] },
-                    { date: '19/02/2026', started: 8, incidents: [{ plate: 'BWU5G46', driver: 'ELMAR' }] },
-                    { date: '24/02/2026', started: 8, incidents: [{ plate: 'BWU5G46', driver: 'ELMAR' }] },
-                    { date: '26/02/2026', started: 11, incidents: [{ plate: 'GIR7B54', driver: 'JONES' }] },
-                    { date: '27/02/2026', started: 12, incidents: [{ plate: 'GIR7B54', driver: 'JONES' }] },
-                ]
-            },
-            Março: {
-                days: 31,
-                events: [
-                    { date: '01/03/2026', started: 6, incidents: [] },
-                    { date: '02/03/2026', started: 9, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }, { plate: 'KJC1401', driver: 'ROBERTO CARLOS' }] },
-                    { date: '03/03/2026', started: 10, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }] },
-                    { date: '04/03/2026', started: 10, incidents: [] },
-                    { date: '05/03/2026', started: 10, incidents: [{ plate: 'BWU5G46', driver: 'EMERSON' }] },
-                    { date: '06/03/2026', started: 10, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }, { plate: 'CSQ8E46', driver: 'MARCELO' }] },
-                    { date: '07/03/2026', started: 7, incidents: [] },
-                    { date: '08/03/2026', started: 6, incidents: [] },
-                    { date: '09/03/2026', started: 8, incidents: [
-                        { plate: 'CSQ8E46', driver: 'MARCELO' }, 
-                        { plate: 'PEY9J45', driver: 'EMERSON' }, 
-                        { plate: 'OYV5235', driver: 'ERIC' }, 
-                        { plate: 'NMJ-9A41', driver: 'CLOVIS' }
-                    ]},
-                ]
-            }
+            Janeiro: { days: 31, events: [
+                { date: '05/01/2026', started: 12, incidents: [{ plate: 'CSE0H31', driver: 'MESSIAS' }] },
+                { date: '10/01/2026', started: 8, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
+                { date: '16/01/2026', started: 11, incidents: [{ plate: 'CSE031', driver: 'MESSIAS' }] },
+                { date: '17/01/2026', started: 8, incidents: [{ plate: 'PFB1495', driver: 'CLOVIS' }] },
+                { date: '19/01/2026', started: 9, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
+                { date: '21/01/2026', started: 11, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }] },
+                { date: '22/01/2026', started: 10, incidents: [{ plate: 'KLQ4482', driver: 'JACKSON' }] },
+                { date: '23/01/2026', started: 9, incidents: [{ plate: 'GHA0I73', driver: 'ELCIDES' }] },
+                { date: '27/01/2026', started: 7, incidents: [{ plate: 'KLQ4482', driver: 'JACKSON' }] },
+                { date: '29/01/2026', started: 11, incidents: [{ plate: 'OHE9D01', driver: 'JOELINTON' }] }
+            ]},
+            Fevereiro: { days: 28, events: [
+                { date: '04/02/2026', started: 12, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }, { plate: 'OHE9D01', driver: 'JOELITON' }] },
+                { date: '06/02/2026', started: 12, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }] },
+                { date: '12/02/2026', started: 13, incidents: [{ plate: 'DKI6I07', driver: 'PLATINIS' }] },
+                { date: '13/02/2026', started: 12, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
+                { date: '18/02/2026', started: 8, incidents: [{ plate: 'KLQ4482', driver: 'MESSIAS' }, { plate: 'OFQ8A53', driver: 'MATHEUS' }] },
+                { date: '19/02/2026', started: 8, incidents: [{ plate: 'BWU5G46', driver: 'ELMAR' }] },
+                { date: '24/02/2026', started: 8, incidents: [{ plate: 'BWU5G46', driver: 'ELMAR' }] },
+                { date: '26/02/2026', started: 11, incidents: [{ plate: 'GIR7B54', driver: 'JONES' }] },
+                { date: '27/02/2026', started: 12, incidents: [{ plate: 'GIR7B54', driver: 'JONES' }] }
+            ]},
+            Março: { days: 31, events: [
+                { date: '02/03/2026', started: 9, incidents: [{ plate: 'GFA9B22', driver: 'JOAO VICTOR' }, { plate: 'KJC1401', driver: 'ROBERTO CARLOS' }] },
+                { date: '03/03/2026', started: 10, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }] },
+                { date: '05/03/2026', started: 10, incidents: [{ plate: 'BWU5G46', driver: 'EMERSON' }] },
+                { date: '06/03/2026', started: 10, incidents: [{ plate: 'BYJ1E53', driver: 'JACKSON' }, { plate: 'CSQ8E46', driver: 'MARCELO' }] },
+                { date: '09/03/2026', started: 8, incidents: [
+                    { plate: 'CSQ8E46', driver: 'MARCELO' }, { plate: 'PEY9J45', driver: 'EMERSON' }, 
+                    { plate: 'OYV5235', driver: 'ERIC' }, { plate: 'NMJ-9A41', driver: 'CLOVIS' }
+                ]}
+            ]}
         };
 
-        function App() {
-            const [activeMonth, setActiveMonth] = useState('Março');
-            const months = Object.keys(DATA_2026);
+        let currentMonth = 'Março';
 
-            // Reforço na inicialização dos ícones
-            useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
-            }, [activeMonth]);
+        function render() {
+            const data = DATA_2026[currentMonth];
+            const allDays = Array.from({ length: data.days }, (_, i) => {
+                const day = i + 1;
+                const dStr = `${day.toString().padStart(2, '0')}/${currentMonth === 'Janeiro' ? '01' : currentMonth === 'Fevereiro' ? '02' : '03'}/2026`;
+                return data.events.find(e => e.date === dStr) || { date: dStr, started: 9, incidents: [] };
+            });
 
-            const stats = useMemo(() => {
-                const monthConfig = DATA_2026[activeMonth];
-                
-                // Preencher dias vazios para o gráfico não quebrar
-                const allDays = Array.from({ length: monthConfig.days }, (_, i) => {
-                    const dayNum = i + 1;
-                    const dateStr = `${dayNum.toString().padStart(2, '0')}/${activeMonth === 'Janeiro' ? '01' : activeMonth === 'Fevereiro' ? '02' : '03'}/2026`;
-                    const existing = monthConfig.events.find(e => e.date === dateStr);
-                    return existing || { date: dateStr, started: 8, incidents: [] };
-                });
+            // Stats
+            const totalStarted = allDays.reduce((a, b) => a + b.started, 0);
+            const incidents = allDays.flatMap(d => d.incidents.map(i => ({...i, date: d.date})));
+            const uptime = (((totalStarted - incidents.length) / totalStarted) * 100).toFixed(1);
 
-                let totalStarted = 0;
-                let totalBreaks = 0;
-                const driverMap = {};
-                const plateMap = {};
+            // KPIs
+            document.getElementById('kpis').innerHTML = `
+                ${kpiCard('zap', 'Saídas Totais', totalStarted, 'text-blue-600', 'bg-blue-50')}
+                ${kpiCard('wrench', 'Quebras', incidents.length, 'text-rose-600', 'bg-rose-50')}
+                ${kpiCard('activity', 'Eficiência', uptime + '%', 'text-emerald-600', 'bg-emerald-50')}
+                ${kpiCard('shield-check', 'Ativos', allDays.filter(d=>d.started > 0).length + ' Dias', 'text-indigo-600', 'bg-indigo-50')}
+            `;
 
-                allDays.forEach(day => {
-                    totalStarted += day.started;
-                    day.incidents.forEach(inc => {
-                        totalBreaks++;
-                        driverMap[inc.driver] = (driverMap[inc.driver] || 0) + 1;
-                        plateMap[inc.plate] = (plateMap[inc.plate] || 0) + 1;
-                    });
-                });
+            // Rankings
+            const drivers = {}, plates = {};
+            incidents.forEach(i => {
+                drivers[i.driver] = (drivers[i.driver] || 0) + 1;
+                plates[i.plate] = (plates[i.plate] || 0) + 1;
+            });
 
-                const uptime = totalStarted > 0 ? (((totalStarted - totalBreaks) / totalStarted) * 100).toFixed(1) : 0;
-                const monthKey = activeMonth === 'Janeiro' ? 'Jan' : (activeMonth === 'Fevereiro' ? 'Feb' : null);
-                
-                const fleetHealth = Object.entries(DOWNTIME_DATA).map(([plate, downtime]) => {
-                    const daysIdle = monthKey ? downtime[monthKey] : 0;
-                    const totalDays = monthConfig.days;
-                    const utilization = (((totalDays - daysIdle) / totalDays) * 100).toFixed(0);
-                    return { plate, daysIdle, utilization: parseInt(utilization) };
-                }).sort((a, b) => a.utilization - b.utilization);
-
-                return { 
-                    totalStarted, 
-                    totalBreaks, 
-                    uptime, 
-                    driverRanking: Object.entries(driverMap).sort((a,b) => b[1] - a[1]),
-                    plateRanking: Object.entries(plateMap).sort((a,b) => b[1] - a[1]),
-                    allDays, 
-                    fleetHealth 
-                };
-            }, [activeMonth]);
-
-            return (
-                <div className="min-h-screen">
-                    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 glass shadow-sm">
-                        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 card-gradient rounded-2xl flex items-center justify-center text-white shadow-xl">
-                                    <i data-lucide="truck"></i>
-                                </div>
-                                <div>
-                                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter">SGC LOGÍSTICA</h1>
-                                    <p className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest">Controle Operacional • 2026</p>
-                                </div>
-                            </div>
-
-                            <nav className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
-                                {months.map(m => (
-                                    <button 
-                                        key={m} 
-                                        onClick={() => setActiveMonth(m)} 
-                                        className={`px-8 py-2.5 rounded-xl text-xs font-black transition-all ${activeMonth === m ? 'bg-white text-indigo-600 shadow-lg scale-105' : 'text-slate-500 hover:text-slate-800'}`}
-                                    >
-                                        {m.toUpperCase()}
-                                    </button>
-                                ))}
-                            </nav>
+            document.getElementById('rankings').innerHTML = `
+                <div class="space-y-4">
+                    <p class="text-[10px] font-black text-slate-400 uppercase">Top Motoristas (Quebras)</p>
+                    ${Object.entries(drivers).sort((a,b)=>b[1]-a[1]).map(([n,v]) => `
+                        <div class="flex justify-between p-3 bg-slate-50 rounded-xl border text-xs font-bold uppercase">
+                            <span>${n}</span> <span class="text-rose-600">${v}x</span>
                         </div>
-                    </header>
-
-                    <main className="max-w-7xl mx-auto px-6 py-10">
-                        {/* KPIs */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                            <KPI icon="zap" label="Viagens Totais" value={stats.totalStarted} color="text-blue-600" bg="bg-blue-50" />
-                            <KPI icon="wrench" label="Quebras Totais" value={stats.totalBreaks} color="text-rose-600" bg="bg-rose-50" />
-                            <KPI icon="activity" label="Eficiência Mês" value={stats.uptime + "%"} color="text-emerald-600" bg="bg-emerald-50" />
-                            <KPI icon="shield-check" label="Saúde da Frota" value={activeMonth === 'Março' ? '--' : `${(stats.fleetHealth.reduce((a,b)=>a+b.utilization,0)/stats.fleetHealth.length).toFixed(1)}%`} color="text-indigo-600" bg="bg-indigo-50" />
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                            
-                            {/* Lateral: Rankings */}
-                            <div className="lg:col-span-4 space-y-8">
-                                <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200 sidebar-glow">
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-3">
-                                        <i data-lucide="award" className="w-4 text-indigo-500"></i> Painel de Ocorrências
-                                    </h3>
-                                    
-                                    <div className="space-y-8">
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
-                                                <i data-lucide="users" className="w-3"></i> Top Motoristas (Quebras)
-                                            </p>
-                                            <div className="space-y-3">
-                                                {stats.driverRanking.length > 0 ? stats.driverRanking.map(([name, val]) => (
-                                                    <div key={name} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-indigo-200 transition-all cursor-default">
-                                                        <span className="text-xs font-bold text-slate-700 uppercase tracking-tight">{name}</span>
-                                                        <span className={`text-[10px] font-black px-3 py-1 rounded-lg ${val > 1 ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' : 'bg-slate-200 text-slate-600'}`}>
-                                                            {val} {val === 1 ? 'X' : 'X'}
-                                                        </span>
-                                                    </div>
-                                                )) : <p className="text-[11px] text-slate-400 italic">Sem quebras registradas.</p>}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
-                                                <i data-lucide="tool" className="w-3"></i> Veículos Reincidentes
-                                            </p>
-                                            <div className="space-y-3">
-                                                {stats.plateRanking.length > 0 ? stats.plateRanking.map(([plate, val]) => (
-                                                    <div key={plate} className="flex items-center justify-between p-4 bg-slate-900 rounded-2xl text-white shadow-xl">
-                                                        <span className="text-xs font-mono font-black tracking-widest">{plate}</span>
-                                                        <span className="text-[10px] font-black text-rose-400 px-2 border-l border-slate-700">{val}x Falhas</span>
-                                                    </div>
-                                                )) : <p className="text-[11px] text-slate-400 italic">Nenhum veículo crítico.</p>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </section>
-
-                                {activeMonth !== 'Março' && (
-                                    <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
-                                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-3">
-                                            <i data-lucide="battery-charging" className="w-4 text-emerald-500"></i> Aproveitamento Mês
-                                        </h3>
-                                        <div className="space-y-5">
-                                            {stats.fleetHealth.slice(0, 6).map(truck => (
-                                                <div key={truck.plate}>
-                                                    <div className="flex justify-between text-[10px] font-bold mb-2 uppercase text-slate-500">
-                                                        <span>{truck.plate}</span>
-                                                        <span className={truck.utilization < 50 ? 'text-rose-500' : 'text-emerald-600'}>{truck.utilization}%</span>
-                                                    </div>
-                                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                                        <div className={`h-full rounded-full transition-all duration-1000 ${truck.utilization < 40 ? 'bg-rose-500' : (truck.utilization < 75 ? 'bg-amber-400' : 'bg-emerald-500')}`} style={{width: `${truck.utilization}%`}}></div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </section>
-                                )}
-                            </div>
-
-                            {/* Conteúdo: Tabela e Gráfico */}
-                            <div className="lg:col-span-8 space-y-10">
-                                <div className="bg-white rounded-[3rem] shadow-sm border border-slate-200 overflow-hidden">
-                                    <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                                        <div>
-                                            <h3 className="font-black text-slate-800 text-lg">Diário de Ocorrências</h3>
-                                            <p className="text-[11px] font-bold text-slate-400">Total de falhas registradas em {activeMonth}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2 bg-rose-500 text-white px-5 py-2 rounded-2xl shadow-lg shadow-rose-200">
-                                            <i data-lucide="alert-triangle" className="w-4"></i>
-                                            <span className="text-xs font-black">{stats.totalBreaks} ALERTAS</span>
-                                        </div>
-                                    </div>
-                                    <div className="overflow-x-auto scrollbar-hide">
-                                        <table className="w-full text-left">
-                                            <thead>
-                                                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                    <th className="px-10 py-6">Data</th>
-                                                    <th className="px-10 py-6">Veículo</th>
-                                                    <th className="px-10 py-6">Motorista</th>
-                                                    <th className="px-10 py-6 text-right">Ação</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-50">
-                                                {stats.allDays.flatMap(d => d.incidents.map((inc, i) => (
-                                                    <tr key={i} className="row-hover transition-colors">
-                                                        <td className="px-10 py-6 text-sm font-bold text-slate-600 italic">{d.date}</td>
-                                                        <td className="px-10 py-6">
-                                                            <span className="bg-slate-900 text-white px-4 py-2 rounded-xl font-mono text-xs font-black border border-slate-700 shadow-md">
-                                                                {inc.plate}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-10 py-6 text-sm font-black text-slate-800 uppercase tracking-tight underline decoration-indigo-200 decoration-2 underline-offset-4">{inc.driver}</td>
-                                                        <td className="px-10 py-6 text-right">
-                                                            <div className="inline-flex items-center gap-2 text-[10px] font-black text-rose-600 bg-rose-100 px-5 py-2.5 rounded-full uppercase border border-rose-200">
-                                                                <i data-lucide="wrench" className="w-3"></i> Oficina
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )))}
-                                                {stats.totalBreaks === 0 && (
-                                                    <tr><td colSpan="4" className="p-20 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">✅ Operação Sem Incidentes</td></tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden">
-                                    <div className="flex items-center justify-between mb-10">
-                                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Fluxo Diário de Carga</h3>
-                                        <div className="flex gap-4">
-                                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
-                                                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500"></div> Operando
-                                            </div>
-                                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
-                                                <div className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></div> Quebra
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-end gap-2 h-48 w-full">
-                                        {stats.allDays.map((d, i) => (
-                                            <div 
-                                                key={i} 
-                                                className={`flex-1 rounded-t-xl transition-all relative group cursor-pointer ${d.incidents.length > 0 ? 'bg-rose-500 shadow-lg shadow-rose-200' : 'bg-indigo-100 hover:bg-indigo-300'}`}
-                                                style={{ height: d.started === 0 ? '6px' : `${(d.started / 15) * 100}%` }}
-                                            >
-                                                <div className="opacity-0 group-hover:opacity-100 absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] p-3 rounded-2xl z-50 whitespace-nowrap mb-3 shadow-2xl transition-all transform scale-90 group-hover:scale-100 pointer-events-none font-bold border border-slate-700">
-                                                    <p className="text-indigo-400 mb-1">{d.date}</p>
-                                                    <p className="mb-0.5">{d.started} Camiões na rua</p>
-                                                    {d.incidents.length > 0 && <p className="text-rose-400">{d.incidents.length} Falhas mecânicas</p>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="flex justify-between mt-6 text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2">
-                                        <span>Início do Mês</span>
-                                        <span>Performance Mensal</span>
-                                        <span>Fim do Ciclo</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </main>
+                    `).join('') || '<p class="text-xs italic text-slate-400">Nenhuma ocorrência</p>'}
                 </div>
-            );
-        }
+                <div class="space-y-4 mt-6">
+                    <p class="text-[10px] font-black text-slate-400 uppercase">Placas Reincidentes</p>
+                    ${Object.entries(plates).sort((a,b)=>b[1]-a[1]).map(([p,v]) => `
+                        <div class="flex justify-between p-3 bg-slate-900 text-white rounded-xl text-xs font-mono font-bold">
+                            <span>${p}</span> <span class="text-rose-400">${v}x</span>
+                        </div>
+                    `).join('') || '<p class="text-xs italic text-slate-400">Sem reincidência</p>'}
+                </div>
+            `;
 
-        function KPI({ icon, label, value, color, bg }) {
-            return (
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center gap-6 hover:translate-y-[-6px] transition-all duration-300 group">
-                    <div className={`p-5 rounded-2xl ${bg} ${color} shadow-sm group-hover:scale-110 transition-transform`}>
-                        <i data-lucide={icon} className="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5">{label}</p>
-                        <p className={`text-3xl font-black ${color.replace('text-', 'text-slate-800')}`}>{value}</p>
+            // Saúde
+            const healthEl = document.getElementById('health-container');
+            const healthBody = document.getElementById('fleet-health');
+            const mKey = currentMonth === 'Janeiro' ? 'Jan' : (currentMonth === 'Fevereiro' ? 'Feb' : null);
+            if (mKey) {
+                healthEl.classList.remove('hidden');
+                healthBody.innerHTML = Object.entries(DOWNTIME_DATA).map(([p, d]) => {
+                    const pct = (((data.days - d[mKey]) / data.days) * 100).toFixed(0);
+                    return `<div>
+                        <div class="flex justify-between text-[10px] font-bold mb-1 uppercase"><span>${p}</span><span>${pct}%</span></div>
+                        <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full ${pct < 40 ? 'bg-rose-500' : 'bg-indigo-500'}" style="width:${pct}%"></div>
+                        </div>
+                    </div>`;
+                }).slice(0, 8).join('');
+            } else { healthEl.classList.add('hidden'); }
+
+            // Table
+            document.getElementById('incidents-body').innerHTML = incidents.map(i => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-10 py-5 text-sm font-bold text-slate-500">${i.date}</td>
+                    <td class="px-10 py-5 font-mono text-xs font-bold text-slate-900 uppercase">${i.plate}</td>
+                    <td class="px-10 py-5 text-sm font-black uppercase text-slate-700 underline decoration-indigo-200">${i.driver}</td>
+                    <td class="px-10 py-5 text-right"><span class="bg-rose-100 text-rose-600 text-[9px] font-black px-3 py-1.5 rounded-full border border-rose-200">OFICINA</span></td>
+                </tr>
+            `).join('') || '<tr><td colspan="4" class="p-10 text-center text-slate-400 font-bold uppercase italic">Mês sem intercorrências</td></tr>';
+
+            // Chart
+            document.getElementById('chart-container').innerHTML = allDays.map(d => `
+                <div class="flex-1 rounded-t-lg relative group ${d.incidents.length > 0 ? 'bg-rose-500 shadow-lg' : 'bg-indigo-100 hover:bg-indigo-300'}" 
+                     style="height: ${(d.started / 15) * 100}%">
+                    <div class="opacity-0 group-hover:opacity-100 absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] p-2 rounded-lg mb-2 shadow-xl transition-all pointer-events-none z-50">
+                        ${d.date}: ${d.started} saídas
                     </div>
                 </div>
-            );
+            `).join('');
+
+            lucide.createIcons();
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function kpiCard(icon, label, value, color, bg) {
+            return `<div class="bg-white p-6 rounded-[2rem] border shadow-sm flex items-center gap-5 hover:-translate-y-1 transition-all duration-300">
+                <div class="p-4 rounded-2xl ${bg} ${color} shadow-sm"><i data-lucide="${icon}"></i></div>
+                <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">${label}</p><p class="text-2xl font-black text-slate-800">${value}</p></div>
+            </div>`;
+        }
+
+        function setupMonths() {
+            const nav = document.getElementById('month-selector');
+            nav.innerHTML = Object.keys(DATA_2026).map(m => `
+                <button onclick="changeMonth('${m}')" class="month-btn px-6 py-2 rounded-xl text-xs font-black transition-all ${m === currentMonth ? 'bg-white shadow-lg text-indigo-600 scale-105' : 'text-slate-500'}" data-month="${m}">
+                    ${m.toUpperCase()}
+                </button>
+            `).join('');
+        }
+
+        window.changeMonth = (m) => { currentMonth = m; setupMonths(); render(); };
+
+        window.onload = () => {
+            setupMonths();
+            render();
+            setTimeout(() => document.getElementById('loader').style.opacity = '0', 500);
+            setTimeout(() => document.getElementById('loader').style.display = 'none', 1000);
+        };
     </script>
 </body>
 </html>
