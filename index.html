@@ -37,18 +37,15 @@
             </div>
 
             <nav id="month-selector" class="flex bg-slate-100 p-1.5 rounded-2xl border shadow-inner">
-                <!-- Botões Gerados via JS -->
-            </nav>
+                </nav>
         </div>
     </header>
 
     <main class="max-w-[1600px] mx-auto px-6 py-8">
-        <!-- KPIs Principais (Saídas e Inconclusões) -->
         <div id="kpis" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"></div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            <!-- COLUNA ESQUERDA: Dados do Mês Selecionado -->
             <div class="lg:col-span-3 space-y-6">
                 <div class="bg-white p-6 rounded-[2rem] shadow-sm border">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -65,7 +62,6 @@
                 </div>
             </div>
 
-            <!-- COLUNA CENTRAL: Tabela e Gráfico -->
             <div class="lg:col-span-6 space-y-6">
                 <div class="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden">
                     <div class="px-8 py-6 border-b bg-slate-50/50 flex justify-between items-center">
@@ -93,7 +89,6 @@
                 </div>
             </div>
 
-            <!-- COLUNA DIREITA: RESUMO ACUMULADO -->
             <div class="lg:col-span-3">
                 <div class="bg-slate-900 text-white p-8 rounded-[2.5rem] shadow-2xl sticky top-[100px]">
                     <div class="flex items-center gap-3 mb-8 border-b border-slate-700 pb-4">
@@ -107,8 +102,7 @@
                     </div>
 
                     <div id="driver-summary-total" class="space-y-4">
-                        <!-- Gerado via JS -->
-                    </div>
+                        </div>
 
                     <div class="mt-8 pt-6 border-t border-slate-700">
                         <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
@@ -121,8 +115,30 @@
         </div>
     </main>
 
-    <script>
-        const DOWNTIME_DATA = {
+    <script type="module">
+        // Importando o Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // Suas configurações do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCchiBta11qw0ZaXGtJed6fcOTQbye2r8c",
+            authDomain: "metas-de-motorista.firebaseapp.com",
+            projectId: "metas-de-motorista",
+            storageBucket: "metas-de-motorista.firebasestorage.app",
+            messagingSenderId: "754155461930",
+            appId: "1:754155461930:web:481fe9861a17ef444dd253"
+        };
+
+        // Inicializa o app e o banco de dados
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Caminho do documento na nuvem para esse dashboard
+        const docRef = doc(db, "sgc_operacao", "performance_consolidados_2026");
+
+        // DADOS INICIAIS (Serão enviados para a nuvem caso ela esteja vazia)
+        const INITIAL_DOWNTIME_DATA = {
             'BWU5G46': { Jan: 9, Feb: 5 }, 'BYJ1E53': { Jan: 28, Feb: 14 }, 'CSE0H31': { Jan: 21, Feb: 28 },
             'CSQ8E46': { Jan: 11, Feb: 14 }, 'OFQ8A53': { Jan: 31, Feb: 16 }, 'DKI6I07': { Jan: 23, Feb: 10 },
             'GFA9B22': { Jan: 9, Feb: 7 }, 'GHA0I73': { Jan: 5, Feb: 8 }, 'GIR7B54': { Jan: 27, Feb: 25 },
@@ -131,7 +147,7 @@
             'NMJ-9A41': { Jan: 27, Feb: 12 }, 'OHE9D01': { Jan: 30, Feb: 18 }, 'KLQ4482': { Jan: 13, Feb: 22 },
         };
 
-        const DATA_2026 = {
+        const INITIAL_DATA_2026 = {
             Janeiro: { days: 31, events: [
                 { date: '05/01/2026', started: 12, incidents: [{ plate: 'CSE0H31', driver: 'MESSIAS' }] },
                 { date: '10/01/2026', started: 8, incidents: [{ plate: 'DKI6I07', driver: 'MANSUETO' }] },
@@ -167,25 +183,52 @@
             ]}
         };
 
-        let currentMonth = 'Março';
+        // Variáveis que vão armazenar os dados carregados
+        window.DOWNTIME_DATA = {};
+        window.DATA_2026 = {};
+        window.currentMonth = 'Março';
 
-        function render() {
-            const data = DATA_2026[currentMonth];
+        // Escuta o banco de dados do Firebase em Tempo Real
+        onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const cloudData = docSnap.data();
+                window.DOWNTIME_DATA = cloudData.downtime || INITIAL_DOWNTIME_DATA;
+                window.DATA_2026 = cloudData.events || INITIAL_DATA_2026;
+                
+                window.setupMonths();
+                window.render();
+
+                // Fade-out do loader após renderizar os dados do Firebase
+                setTimeout(() => document.getElementById('loader').style.opacity = '0', 300);
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 800);
+            } else {
+                // Se não existir, envia a base inicial estática para a nuvem
+                setDoc(docRef, {
+                    downtime: INITIAL_DOWNTIME_DATA,
+                    events: INITIAL_DATA_2026
+                });
+            }
+        });
+
+        window.render = function() {
+            const data = window.DATA_2026[window.currentMonth];
+            if (!data) return;
+
             const allDays = Array.from({ length: data.days }, (_, i) => {
                 const day = i + 1;
-                const dStr = `${day.toString().padStart(2, '0')}/${currentMonth === 'Janeiro' ? '01' : currentMonth === 'Fevereiro' ? '02' : '03'}/2026`;
+                const dStr = `${day.toString().padStart(2, '0')}/${window.currentMonth === 'Janeiro' ? '01' : window.currentMonth === 'Fevereiro' ? '02' : '03'}/2026`;
                 return data.events.find(e => e.date === dStr) || { date: dStr, started: 9, incidents: [] };
             });
 
             // Stats Mensais
             const totalStarted = allDays.reduce((a, b) => a + b.started, 0);
             const incidents = allDays.flatMap(d => d.incidents.map(i => ({...i, date: d.date})));
-            const mKey = currentMonth === 'Janeiro' ? 'Jan' : (currentMonth === 'Fevereiro' ? 'Feb' : null);
+            const mKey = window.currentMonth === 'Janeiro' ? 'Jan' : (window.currentMonth === 'Fevereiro' ? 'Feb' : null);
 
-            // KPIs (Removida Frota Parada e atualizado nome de Quebras)
+            // KPIs
             document.getElementById('kpis').innerHTML = `
-                ${kpiCard('zap', 'Saídas Totais', totalStarted, 'text-blue-600', 'bg-blue-50')}
-                ${kpiCard('wrench', 'Inconclusão de Rota', incidents.length, 'text-rose-600', 'bg-rose-50')}
+                ${window.kpiCard('zap', 'Saídas Totais', totalStarted, 'text-blue-600', 'bg-blue-50')}
+                ${window.kpiCard('wrench', 'Inconclusão de Rota', incidents.length, 'text-rose-600', 'bg-rose-50')}
             `;
 
             // Badge Tabela
@@ -211,7 +254,7 @@
 
             // Acumulado Geral (Direita) - Lógica de Soma de todos os meses
             const globalDrivers = {};
-            Object.values(DATA_2026).forEach(month => {
+            Object.values(window.DATA_2026).forEach(month => {
                 month.events.forEach(day => {
                     day.incidents.forEach(inc => {
                         globalDrivers[inc.driver] = (globalDrivers[inc.driver] || 0) + 1;
@@ -239,7 +282,7 @@
             const healthBody = document.getElementById('fleet-health');
             if (mKey) {
                 healthEl.classList.remove('hidden');
-                healthBody.innerHTML = Object.entries(DOWNTIME_DATA)
+                healthBody.innerHTML = Object.entries(window.DOWNTIME_DATA)
                     .sort((a, b) => b[1][mKey] - a[1][mKey])
                     .slice(0, 8)
                     .map(([p, d]) => {
@@ -280,29 +323,28 @@
             lucide.createIcons();
         }
 
-        function kpiCard(icon, label, value, color, bg) {
+        window.kpiCard = function(icon, label, value, color, bg) {
             return `<div class="bg-white p-7 rounded-[2rem] border shadow-sm flex items-center gap-5 hover:-translate-y-1 transition-all duration-300 cursor-default">
                 <div class="p-4 rounded-2xl ${bg} ${color} shadow-sm shadow-indigo-100"><i data-lucide="${icon}"></i></div>
                 <div><p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">${label}</p><p class="text-2xl font-black text-slate-800 tracking-tighter">${value}</p></div>
             </div>`;
         }
 
-        function setupMonths() {
+        window.setupMonths = function() {
             const nav = document.getElementById('month-selector');
-            nav.innerHTML = Object.keys(DATA_2026).map(m => `
-                <button onclick="changeMonth('${m}')" class="month-btn px-6 py-2 rounded-xl text-[10px] font-black transition-all ${m === currentMonth ? 'bg-white shadow-lg text-indigo-600 scale-105' : 'text-slate-500'}" data-month="${m}">
+            if (Object.keys(window.DATA_2026).length === 0) return;
+
+            nav.innerHTML = Object.keys(window.DATA_2026).map(m => `
+                <button onclick="changeMonth('${m}')" class="month-btn px-6 py-2 rounded-xl text-[10px] font-black transition-all ${m === window.currentMonth ? 'bg-white shadow-lg text-indigo-600 scale-105' : 'text-slate-500'}" data-month="${m}">
                     ${m.toUpperCase()}
                 </button>
             `).join('');
         }
 
-        window.changeMonth = (m) => { currentMonth = m; setupMonths(); render(); };
-
-        window.onload = () => {
-            setupMonths();
-            render();
-            setTimeout(() => document.getElementById('loader').style.opacity = '0', 500);
-            setTimeout(() => document.getElementById('loader').style.display = 'none', 1000);
+        window.changeMonth = function(m) { 
+            window.currentMonth = m; 
+            window.setupMonths(); 
+            window.render(); 
         };
     </script>
 </body>
